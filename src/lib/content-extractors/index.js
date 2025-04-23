@@ -7,7 +7,7 @@
 
 import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
-import XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 /**
  * Extract content from a PDF file
@@ -136,15 +136,26 @@ export async function extractPptContent(fileBuffer) {
  */
 export async function extractXlsxContent(fileBuffer) {
   try {
-    const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(fileBuffer);
     
     // Extract text from all sheets
     let fullText = '';
     const sheetChunks = [];
+    const sheetNames = [];
     
-    workbook.SheetNames.forEach(sheetName => {
-      const sheet = workbook.Sheets[sheetName];
-      const sheetText = XLSX.utils.sheet_to_txt(sheet);
+    workbook.eachSheet((worksheet, sheetId) => {
+      const sheetName = worksheet.name;
+      sheetNames.push(sheetName);
+      let sheetText = '';
+      
+      // Process each row and cell
+      worksheet.eachRow((row, rowNumber) => {
+        row.eachCell((cell, colNumber) => {
+          sheetText += `${cell.value || ''}\t`;
+        });
+        sheetText += '\n';
+      });
       
       fullText += `Sheet: ${sheetName}\n${sheetText}\n\n`;
       
@@ -159,12 +170,12 @@ export async function extractXlsxContent(fileBuffer) {
     });
     
     const metadata = {
-      title: null, // Would be extracted from workbook properties
-      author: null,
-      created_date: null,
-      modified_date: null,
-      sheet_count: workbook.SheetNames.length,
-      sheet_names: workbook.SheetNames,
+      title: workbook.properties.title || null,
+      author: workbook.properties.creator || null,
+      created_date: workbook.properties.created ? new Date(workbook.properties.created).toISOString() : null,
+      modified_date: workbook.properties.modified ? new Date(workbook.properties.modified).toISOString() : null,
+      sheet_count: sheetNames.length,
+      sheet_names: sheetNames,
       content_type: 'xlsx'
     };
     
