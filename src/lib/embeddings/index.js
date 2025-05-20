@@ -6,7 +6,6 @@
  */
 
 import * as openai from './openai';
-import * as sbert from './sbert';
 import { 
   DEFAULT_EMBEDDING_PROVIDER, 
   EMBEDDING_PROVIDERS 
@@ -21,6 +20,7 @@ import {
  */
 export async function generateEmbedding(text, provider = DEFAULT_EMBEDDING_PROVIDER) {
   if (provider === EMBEDDING_PROVIDERS.SBERT) {
+    const sbert = await import('./sbert');
     return sbert.generateEmbedding(text);
   } else {
     return openai.generateEmbedding(text);
@@ -36,6 +36,7 @@ export async function generateEmbedding(text, provider = DEFAULT_EMBEDDING_PROVI
  */
 export async function generateEmbeddingsBatch(texts, provider = DEFAULT_EMBEDDING_PROVIDER) {
   if (provider === EMBEDDING_PROVIDERS.SBERT) {
+    const sbert = await import('./sbert');
     return sbert.generateEmbeddingsBatch(texts);
   } else {
     return openai.generateEmbeddingsBatch(texts);
@@ -57,6 +58,7 @@ export async function generateChunkEmbeddings(chunks, options = {}) {
   
   // Use the appropriate provider
   if (provider === EMBEDDING_PROVIDERS.SBERT) {
+    const sbert = await import('./sbert');
     return sbert.generateChunkEmbeddings(chunks);
   } else {
     // If enhanced OpenAI processing is requested, use a more advanced model
@@ -75,6 +77,7 @@ export async function generateChunkEmbeddings(chunks, options = {}) {
  */
 export async function calculateSimilarity(text1, text2, provider = DEFAULT_EMBEDDING_PROVIDER) {
   if (provider === EMBEDDING_PROVIDERS.SBERT) {
+    const sbert = await import('./sbert');
     return sbert.calculateSimilarity(text1, text2);
   } else {
     // For OpenAI, we need to generate embeddings and calculate similarity manually
