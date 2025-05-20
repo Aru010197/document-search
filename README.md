@@ -120,9 +120,6 @@ document-search-app/
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Acknowledgements
 
@@ -133,5 +130,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [OpenAI](https://openai.com/)
 - [TensorFlow.js](https://www.tensorflow.org/js)
 - [Universal Sentence Encoder](https://tfhub.dev/google/universal-sentence-encoder/4)
-# document-search
-# document-search
+
+
