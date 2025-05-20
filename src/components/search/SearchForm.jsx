@@ -1,28 +1,47 @@
 import React, { useState, useEffect } from 'react';
-import { FaSearch, FaTimes } from 'react-icons/fa';
+import { FaSearch, FaTimes, FaRobot } from 'react-icons/fa';
 
 /**
  * Component for the search input form
  * 
  * @param {Object} props
  * @param {string} props.initialQuery - Initial search query
+ * @param {boolean} props.useReranker - Whether to use the reranker
  * @param {Function} props.onSearch - Function to call when search is submitted
+ * @param {Function} props.onRerankerToggle - Function to call when reranker is toggled
  * @param {string} props.className - Additional CSS classes
  * @returns {JSX.Element}
  */
-export default function SearchForm({ initialQuery = '', onSearch, className = '' }) {
+export default function SearchForm({ 
+  initialQuery = '', 
+  useReranker = false, 
+  onSearch, 
+  onRerankerToggle,
+  className = '' 
+}) {
   const [query, setQuery] = useState(initialQuery);
+  const [reranker, setReranker] = useState(useReranker);
   
-  // Update local state when initialQuery changes
+  // Update local state when props change
   useEffect(() => {
     setQuery(initialQuery);
-  }, [initialQuery]);
+    setReranker(useReranker);
+  }, [initialQuery, useReranker]);
   
   // Handle form submission
   const handleSubmit = (e) => {
     e.preventDefault();
     if (query.trim()) {
-      onSearch(query.trim());
+      onSearch(query.trim(), reranker);
+    }
+  };
+  
+  // Handle reranker toggle
+  const handleRerankerToggle = () => {
+    const newValue = !reranker;
+    setReranker(newValue);
+    if (onRerankerToggle) {
+      onRerankerToggle(newValue);
     }
   };
   
@@ -73,10 +92,17 @@ export default function SearchForm({ initialQuery = '', onSearch, className = ''
         </div>
       </div>
       
-      <div className="mt-2 text-xs text-gray-500">
-        <p>
+      <div className="mt-2 flex justify-between items-center">
+        <p className="text-xs text-gray-500">
           Search for documents by keywords, phrases, or metadata. Use quotes for exact phrases.
         </p>
+        
+        <div className="flex items-center">
+          <span className="text-sm text-primary-600 flex items-center">
+            <FaRobot className="mr-1 text-primary-500" />
+            <span>AI-Enhanced Search</span>
+          </span>
+        </div>
       </div>
     </form>
   );

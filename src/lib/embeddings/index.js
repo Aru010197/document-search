@@ -46,14 +46,22 @@ export async function generateEmbeddingsBatch(texts, provider = DEFAULT_EMBEDDIN
  * Generate embeddings for document chunks
  * 
  * @param {Array<Object>} chunks - Array of document chunks with content
- * @param {string} provider - The embedding provider ('openai' or 'sbert')
+ * @param {Object} options - Processing options
+ * @param {boolean} options.useOpenAI - Whether to use enhanced OpenAI processing
+ * @param {string} options.provider - The embedding provider ('openai' or 'sbert')
  * @returns {Promise<Array<Object>>} - Chunks with embeddings added
  */
-export async function generateChunkEmbeddings(chunks, provider = DEFAULT_EMBEDDING_PROVIDER) {
+export async function generateChunkEmbeddings(chunks, options = {}) {
+  // Determine provider - if useOpenAI is true, force OpenAI provider
+  const provider = options.useOpenAI ? EMBEDDING_PROVIDERS.OPENAI : (options.provider || DEFAULT_EMBEDDING_PROVIDER);
+  
+  // Use the appropriate provider
   if (provider === EMBEDDING_PROVIDERS.SBERT) {
     return sbert.generateChunkEmbeddings(chunks);
   } else {
-    return openai.generateChunkEmbeddings(chunks);
+    // If enhanced OpenAI processing is requested, use a more advanced model
+    const enhancedOptions = options.useOpenAI ? { useAdvancedModel: true } : {};
+    return openai.generateChunkEmbeddings(chunks, enhancedOptions);
   }
 }
 

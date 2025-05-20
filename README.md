@@ -58,7 +58,7 @@ A powerful document search application that allows users to search through multi
    yarn dev
    ```
 
-6. Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
+6. Open [http://localhost:3016](http://localhost:3016) in your browser to see the application.
 
 ## Embedding Providers
 
@@ -108,9 +108,41 @@ document-search-app/
 ## API Routes
 
 - `GET /api/search`: Search for documents
-- `POST /api/upload`: Upload a new document
 - `GET /api/documents/[id]`: Get document details
 - `GET /api/documents/[id]/download`: Download a document
+
+## Document Management
+
+### Bulk Document Upload
+
+The application includes a Python script for bulk uploading documents from an Excel file:
+
+```bash
+python excel.py --excel-file <path_to_excel_file> --column <link_column_name>
+```
+
+This script allows you to:
+- Upload multiple documents from URLs listed in an Excel file
+- Extract and store document metadata
+- Process documents in batch
+
+See [excel_uploader_README.md](./excel_uploader_README.md) for detailed instructions.
+
+### Processing Manually Uploaded Documents
+
+If you've manually uploaded documents to the Supabase storage bucket, you need to process them to make them searchable:
+
+1. Create database entries for the uploaded files:
+   ```bash
+   node create_document_entries.js
+   ```
+
+2. Process the documents to extract text and create searchable chunks:
+   ```bash
+   node process_documents.js
+   ```
+
+See [DOCUMENT_PROCESSING.md](./DOCUMENT_PROCESSING.md) for detailed instructions on making your documents searchable.
 
 ## Contributing
 
@@ -133,5 +165,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [OpenAI](https://openai.com/)
 - [TensorFlow.js](https://www.tensorflow.org/js)
 - [Universal Sentence Encoder](https://tfhub.dev/google/universal-sentence-encoder/4)
-# document-search
-# document-search

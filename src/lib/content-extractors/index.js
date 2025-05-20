@@ -270,13 +270,15 @@ export async function extractContent(fileBuffer, fileType) {
 /**
  * Generate embeddings for document chunks
  * @param {Array} chunks - Array of content chunks
+ * @param {Object} options - Processing options
+ * @param {boolean} options.useOpenAI - Whether to use enhanced OpenAI processing
  * @returns {Promise<Array>} Chunks with embeddings
  */
-export async function generateEmbeddings(chunks) {
+export async function generateEmbeddings(chunks, options = {}) {
   // Import the embeddings module
   const { generateChunkEmbeddings } = await import('../embeddings');
   
   // Use the embeddings module to generate embeddings
   // This will use OpenAI by default, but can be configured to use SBERT
-  return generateChunkEmbeddings(chunks);
+  return generateChunkEmbeddings(chunks, options);
 }

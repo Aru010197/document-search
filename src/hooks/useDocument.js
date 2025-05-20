@@ -36,7 +36,7 @@ export default function useDocument() {
   }, []);
 
   // Upload document
-  const uploadDocument = useCallback(async (file) => {
+  const uploadDocument = useCallback(async (file, options = {}) => {
     if (!file) {
       setError('No file selected');
       return null;
@@ -65,6 +65,9 @@ export default function useDocument() {
       // Create form data
       const formData = new FormData();
       formData.append('file', file);
+      
+      // Always use OpenAI enhancement (mandatory)
+      formData.append('useOpenAI', 'true');
       
       // Upload file
       const response = await fetch('/api/upload', {

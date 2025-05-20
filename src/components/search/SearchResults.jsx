@@ -2,7 +2,7 @@ import Link from 'next/link';
 import DocumentIcon from '../documents/DocumentIcon';
 import DownloadButton from '../documents/DownloadButton';
 import HighlightedText from './HighlightedText';
-import { FaSpinner, FaSearch, FaExclamationTriangle } from 'react-icons/fa';
+import { FaSpinner, FaSearch, FaExclamationTriangle, FaRobot } from 'react-icons/fa';
 
 /**
  * Component to display search results
@@ -92,10 +92,19 @@ export default function SearchResults({
   return (
     <div className={`space-y-4 my-4 ${className}`}>
       {/* Results count */}
-      <p className="text-sm text-gray-600">
-        Showing {startItem} to {endItem} of {totalItems} results
-        {query && <span> for "<strong>{query}</strong>"</span>}
-      </p>
+      <div className="text-sm text-gray-600">
+        <p>
+          Showing {startItem} to {endItem} of {totalItems} results
+          {query && <span> for "<strong>{query}</strong>"</span>}
+        </p>
+        <p className="mt-1 text-primary-600 font-medium">
+          <span className="inline-flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </span>
+        </p>
+      </div>
       
       {/* Results list */}
       <div className="space-y-4">
@@ -118,27 +127,36 @@ export default function SearchResults({
                 
                 {/* Document metadata */}
                 <div className="mt-1 text-sm text-gray-600 flex flex-wrap gap-x-4">
-                  <span>Type: {document.filetype.toUpperCase()}</span>
+                  <span>Type: {document.filetype ? document.filetype.toUpperCase() : 'Unknown'}</span>
+                  {document.filename && <span>File Name: {document.filename}</span>}
+                  {document.context && <span>Context: {document.context}</span>}
                   {document.filesize && <span>Size: {formatFileSize(document.filesize)}</span>}
                   {document.author && <span>Author: {document.author}</span>}
-                  <span>Uploaded: {formatDate(document.upload_date)}</span>
+                  <span>Uploaded: {document.upload_date ? formatDate(document.upload_date) : 'Unknown'}</span>
                 </div>
                 
                 {/* Relevance score */}
-                {document.score && (
-                  <div className="mt-1">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800">
-                      Relevance: {Math.round(document.score * 100)}%
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {document.exactFilenameMatch === true ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                      <FaRobot className="mr-1 h-3 w-3" />
+                      Perfect Match: 100%
                     </span>
-                  </div>
-                )}
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800">
+                      <FaRobot className="mr-1 h-3 w-3" />
+                      Relevance: {Math.min(99, Math.floor((document.score || 0) * 100))}%
+                    </span>
+                  )}
+                </div>
                 
                 {/* Document snippet */}
                 {document.snippet && (
                   <div className="mt-2 bg-gray-50 p-3 rounded border border-gray-100">
-                    <p className="text-gray-700 text-sm">
-                      <HighlightedText text={document.snippet} highlight={query} />
-                    </p>
+                    <p 
+                      className="text-gray-700 text-sm"
+                      dangerouslySetInnerHTML={{ __html: document.snippet }}
+                    />
                   </div>
                 )}
                 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { FaSearch, FaUpload, FaBars, FaTimes } from 'react-icons/fa';
+import { FaSearch, FaUpload, FaBars, FaTimes, FaHome } from 'react-icons/fa';
 
 /**
  * Header component with navigation
@@ -14,9 +14,8 @@ export default function Header() {
   
   // Navigation items
   const navItems = [
-    { name: 'Home', href: '/', icon: null },
+    { name: 'Home', href: '/', icon: <FaHome className="mr-2" /> },
     { name: 'Search', href: '/search', icon: <FaSearch className="mr-2" /> },
-    { name: 'Upload', href: '/upload', icon: <FaUpload className="mr-2" /> },
   ];
   
   // Check if a nav item is active

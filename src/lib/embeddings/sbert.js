@@ -49,11 +49,40 @@ export async function generateEmbedding(text) {
     // Convert to array
     const embedding = Array.from(await embeddings.array())[0];
     
-    return embedding;
+    // Pad the embedding to 1536 dimensions
+    return padEmbeddingTo1536Dimensions(embedding);
   } catch (error) {
     console.error('Error generating Universal Sentence Encoder embedding:', error);
     throw new Error(`Failed to generate embedding: ${error.message}`);
   }
+}
+
+/**
+ * Pad an embedding vector to 1536 dimensions
+ * 
+ * @param {number[]} embedding - The original embedding vector
+ * @returns {number[]} - The padded embedding vector with 1536 dimensions
+ */
+function padEmbeddingTo1536Dimensions(embedding) {
+  // If the embedding is already 1536 dimensions, return it as is
+  if (embedding.length === 1536) {
+    return embedding;
+  }
+  
+  // If the embedding is longer than 1536, truncate it
+  if (embedding.length > 1536) {
+    return embedding.slice(0, 1536);
+  }
+  
+  // If the embedding is shorter than 1536, pad it with zeros
+  const processedEmbedding = new Array(1536).fill(0);
+  
+  // Copy the original embedding values
+  for (let i = 0; i < embedding.length; i++) {
+    processedEmbedding[i] = embedding[i];
+  }
+  
+  return processedEmbedding;
 }
 
 /**
@@ -78,7 +107,8 @@ export async function generateEmbeddingsBatch(texts) {
     // Convert to array
     const embeddingsArray = Array.from(await embeddings.array());
     
-    return embeddingsArray;
+    // Pad each embedding to 1536 dimensions
+    return embeddingsArray.map(embedding => padEmbeddingTo1536Dimensions(embedding));
   } catch (error) {
     console.error('Error generating Universal Sentence Encoder embeddings batch:', error);
     throw new Error(`Failed to generate embeddings batch: ${error.message}`);

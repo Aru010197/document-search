@@ -7,6 +7,7 @@ export default function useSearch() {
   
   // Search state
   const [query, setQuery] = useState('');
+  const [useReranker, setUseReranker] = useState(true); // Always use reranker by default
   const [filters, setFilters] = useState({
     filetype: '',
     dateFrom: '',
@@ -29,6 +30,11 @@ export default function useSearch() {
       // Set search query
       if (routerQuery.query) {
         setQuery(routerQuery.query);
+      }
+      
+      // Set reranker option
+      if (routerQuery.rerank) {
+        setUseReranker(routerQuery.rerank === 'true');
       }
       
       // Set filters
@@ -57,14 +63,15 @@ export default function useSearch() {
             dateTo: routerQuery.dateTo || '',
             author: routerQuery.author || ''
           },
-          parseInt(routerQuery.page || '1')
+          parseInt(routerQuery.page || '1'),
+          routerQuery.rerank === 'true'
         );
       }
     }
   }, [routerQuery]);
 
   // Perform search
-  const performSearch = useCallback(async (searchQuery, searchFilters = filters, page = 1) => {
+  const performSearch = useCallback(async (searchQuery, searchFilters = filters, page = 1, rerank = true) => {
     if (!searchQuery || searchQuery.trim() === '') {
       setResults([]);
       setPagination(prev => ({
@@ -84,6 +91,7 @@ export default function useSearch() {
       params.append('query', searchQuery);
       params.append('page', page.toString());
       params.append('limit', pagination.limit.toString());
+      params.append('useReranker', rerank.toString());
       
       if (searchFilters.filetype) params.append('filetype', searchFilters.filetype);
       if (searchFilters.dateFrom) params.append('dateFrom', searchFilters.dateFrom);
@@ -94,18 +102,22 @@ export default function useSearch() {
       const response = await fetch(`/api/search?${params.toString()}`);
       
       if (!response.ok) {
-        throw new Error(`Search failed: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Search failed: ${errorData.error || response.statusText}`);
       }
       
       const data = await response.json();
       
-      // Update state with results
+      // Results from API are already sorted and paginated.
+      // The 'score' field from the API should be the final relevance score.
       setResults(data.results || []);
-      setPagination(data.pagination || {
-        page: 1,
-        limit: 10,
-        total: 0,
-        totalPages: 0
+      
+      // Update pagination with data from the API response
+      setPagination({
+        page: data.pagination?.page || 1,
+        limit: data.pagination?.limit || 10,
+        total: data.pagination?.total || 0,       // Use total from API
+        totalPages: data.pagination?.totalPages || 0 // Use totalPages from API
       });
     } catch (err) {
       console.error('Search error:', err);
@@ -114,13 +126,14 @@ export default function useSearch() {
     } finally {
       setIsLoading(false);
     }
-  }, [filters, pagination.limit]);
+  }, [filters, pagination.limit, useReranker]);
 
   // Handle search submission
-  const handleSearch = useCallback((searchQuery, searchFilters = filters) => {
+  const handleSearch = useCallback((searchQuery, rerank = true, searchFilters = filters) => {
     // Update URL with search parameters
     const params = new URLSearchParams();
     params.append('query', searchQuery);
+    params.append('rerank', 'true'); // Always use reranker
     
     if (searchFilters.filetype) params.append('filetype', searchFilters.filetype);
     if (searchFilters.dateFrom) params.append('dateFrom', searchFilters.dateFrom);
@@ -129,7 +142,7 @@ export default function useSearch() {
     
     // Navigate to search page with query parameters
     router.push(`/search?${params.toString()}`);
-  }, [router, filters]);
+  }, [router, filters, useReranker]);
 
   // Handle filter changes
   const handleFilterChange = useCallback((name, value) => {
@@ -149,9 +162,26 @@ export default function useSearch() {
     router.push(`/search?${params.toString()}`);
   }, [router]);
 
+  // Handle reranker toggle - now always sets to true
+  const handleRerankerToggle = useCallback((value) => {
+    setUseReranker(true);
+    
+    // If we have an active search, ensure reranker is enabled
+    if (query) {
+      // Update URL with reranker always enabled
+      const params = new URLSearchParams(window.location.search);
+      params.set('rerank', 'true');
+      
+      // Navigate to updated search
+      router.push(`/search?${params.toString()}`);
+    }
+  }, [query, router]);
+
   return {
     query,
     setQuery,
+    useReranker,
+    setUseReranker,
     filters,
     results,
     pagination,
@@ -159,6 +189,7 @@ export default function useSearch() {
     error,
     handleSearch,
     handleFilterChange,
-    handlePageChange
+    handlePageChange,
+    handleRerankerToggle
   };
 }

@@ -12,32 +12,36 @@ export default function SearchPage() {
   const {
     query,
     setQuery,
+    useReranker,
     filters,
     results,
-    pagination,
     isLoading,
     error,
     handleSearch,
     handleFilterChange,
-    handlePageChange
+    handlePageChange,
+    handleRerankerToggle,
+    pagination
   } = useSearch();
   
   return (
     <Layout>
       <Head>
-        <title>Search Documents | Document Search App</title>
-        <meta name="description" content="Search through your documents with powerful filters and contextual results" />
+        <title>Document Search | OpenAI-Enhanced Document Search</title>
+        <meta name="description" content="Search your documents with OpenAI-enhanced metadata extraction and semantic understanding" />
       </Head>
       
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-gray-800 mb-6">Search Documents</h1>
+          <h1 className="text-3xl font-bold text-gray-800 mb-6">Document Search</h1>
           
           {/* Search Form */}
           <div className="mb-6">
             <SearchForm 
               initialQuery={query} 
+              useReranker={useReranker}
               onSearch={handleSearch} 
+              onRerankerToggle={handleRerankerToggle}
             />
           </div>
           

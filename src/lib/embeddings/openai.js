@@ -4,6 +4,15 @@ import {
   MAX_EMBEDDING_TEXT_LENGTH
 } from '../../config/embeddings';
 
+// Advanced embedding model for enhanced processing
+const ADVANCED_EMBEDDING_MODEL = 'text-embedding-3-large';
+
+// Dimensions for the embedding models
+const EMBEDDING_DIMENSIONS = {
+  'text-embedding-3-small': 1536,
+  'text-embedding-3-large': 3072
+};
+
 // Initialize the OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -13,15 +22,20 @@ const openai = new OpenAI({
  * Generate embeddings for text using OpenAI's embeddings API
  * 
  * @param {string} text - The text to generate embeddings for
+ * @param {Object} options - Options for embedding generation
+ * @param {boolean} options.useAdvancedModel - Whether to use the advanced embedding model
  * @returns {Promise<number[]>} - The embedding vector
  */
-export async function generateEmbedding(text) {
+export async function generateEmbedding(text, options = {}) {
   try {
     // Truncate text if it's too long (OpenAI has token limits)
     const truncatedText = truncateText(text, MAX_EMBEDDING_TEXT_LENGTH.openai);
     
+    // Select model based on options
+    const model = options.useAdvancedModel ? ADVANCED_EMBEDDING_MODEL : OPENAI_EMBEDDING_MODEL;
+    
     const response = await openai.embeddings.create({
-      model: OPENAI_EMBEDDING_MODEL,
+      model: model,
       input: truncatedText,
     });
     
@@ -37,9 +51,11 @@ export async function generateEmbedding(text) {
  * Generate embeddings for multiple texts in batch
  * 
  * @param {string[]} texts - Array of texts to generate embeddings for
+ * @param {Object} options - Options for embedding generation
+ * @param {boolean} options.useAdvancedModel - Whether to use the advanced embedding model
  * @returns {Promise<number[][]>} - Array of embedding vectors
  */
-export async function generateEmbeddingsBatch(texts) {
+export async function generateEmbeddingsBatch(texts, options = {}) {
   try {
     // Process in batches of 20 (OpenAI recommendation)
     const batchSize = 20;
@@ -49,8 +65,11 @@ export async function generateEmbeddingsBatch(texts) {
       const batch = texts.slice(i, i + batchSize)
         .map(text => truncateText(text, MAX_EMBEDDING_TEXT_LENGTH.openai));
       
+      // Select model based on options
+      const model = options.useAdvancedModel ? ADVANCED_EMBEDDING_MODEL : OPENAI_EMBEDDING_MODEL;
+      
       const response = await openai.embeddings.create({
-        model: OPENAI_EMBEDDING_MODEL,
+        model: model,
         input: batch,
       });
       
@@ -70,15 +89,17 @@ export async function generateEmbeddingsBatch(texts) {
  * Generate embeddings for document chunks
  * 
  * @param {Array<Object>} chunks - Array of document chunks with content
+ * @param {Object} options - Options for embedding generation
+ * @param {boolean} options.useAdvancedModel - Whether to use the advanced embedding model
  * @returns {Promise<Array<Object>>} - Chunks with embeddings added
  */
-export async function generateChunkEmbeddings(chunks) {
+export async function generateChunkEmbeddings(chunks, options = {}) {
   try {
     // Extract text content from chunks
     const texts = chunks.map(chunk => chunk.content);
     
     // Generate embeddings for all texts
-    const embeddings = await generateEmbeddingsBatch(texts);
+    const embeddings = await generateEmbeddingsBatch(texts, options);
     
     // Add embeddings to chunks
     return chunks.map((chunk, index) => ({

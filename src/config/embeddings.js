@@ -25,7 +25,7 @@ export const DEFAULT_EMBEDDING_PROVIDER = process.env.NEXT_PUBLIC_EMBEDDING_PROV
 /**
  * OpenAI embedding model
  */
-export const OPENAI_EMBEDDING_MODEL = 'text-embedding-ada-002';
+export const OPENAI_EMBEDDING_MODEL = 'text-embedding-3-small';
 
 /**
  * Embedding dimensions

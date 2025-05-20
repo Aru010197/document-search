@@ -24,14 +24,20 @@ export default function DownloadButton({ documentId, filename, className = '' })
       // Get the download URL
       const response = await fetch(`/api/documents/${documentId}/download`);
       
-      if (!response.ok) {
-        throw new Error(`Failed to get download URL: ${response.statusText}`);
-      }
-      
       const data = await response.json();
       
+      if (!response.ok) {
+        const errorMessage = data.error || `Failed to get download URL: ${response.statusText}`;
+        const errorDetails = data.details ? ` (${data.details})` : '';
+        throw new Error(`${errorMessage}${errorDetails}`);
+      }
+      
       if (!data.url) {
-        throw new Error('Download URL not available');
+        throw new Error(data.message || 'Download URL not available');
+      }
+      
+      if (data.status === 'unavailable') {
+        throw new Error(data.message || 'Document preview not available');
       }
       
       // Create a temporary link and trigger the download

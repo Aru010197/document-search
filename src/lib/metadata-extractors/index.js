@@ -137,25 +137,39 @@ export async function detectLanguage(text) {
  * Enrich document metadata with extracted information
  * @param {Object} metadata - Base metadata object
  * @param {string} text - Document content
+ * @param {Object} options - Processing options
+ * @param {boolean} options.useOpenAI - Whether to use enhanced OpenAI processing
  * @returns {Promise<Object>} Enriched metadata
  */
-export async function enrichMetadata(metadata, text) {
+export async function enrichMetadata(metadata, text, options = {}) {
   if (!text) return metadata;
   
   const enriched = { ...metadata };
+  const useOpenAI = options.useOpenAI === true;
   
   try {
     // Process in parallel for efficiency
-    const [keywords, summary, language] = await Promise.all([
-      extractKeywords(text),
-      generateSummary(text),
-      detectLanguage(text)
+    const [keywords, summary, language, topics, entities, sentiment] = await Promise.all([
+      extractKeywords(text, useOpenAI ? 15 : 10),
+      generateSummary(text, useOpenAI ? 300 : 200),
+      detectLanguage(text),
+      useOpenAI ? extractTopics(text) : Promise.resolve([]),
+      useOpenAI ? extractEntities(text) : Promise.resolve([]),
+      useOpenAI ? analyzeSentiment(text) : Promise.resolve(null)
     ]);
     
     // Add extracted information to metadata
     enriched.keywords = keywords;
     enriched.summary = summary;
     enriched.language = language;
+    
+    // Add enhanced metadata if OpenAI is enabled
+    if (useOpenAI) {
+      enriched.topics = topics;
+      enriched.entities = entities;
+      enriched.sentiment = sentiment;
+      enriched.processed_with = 'openai_enhanced';
+    }
     
     return enriched;
   } catch (error) {
@@ -233,6 +247,133 @@ function fallbackGenerateSummary(text, maxLength = 200) {
   }
   
   return summary.trim();
+}
+
+/**
+ * Extract main topics from document content using OpenAI
+ * @param {string} text - The document text content
+ * @returns {Promise<Array<{name: string, confidence: number}>>} Array of topics with confidence scores
+ */
+export async function extractTopics(text) {
+  if (!text || typeof text !== 'string') return [];
+  
+  try {
+    // Truncate text if it's too long
+    const truncatedText = truncateText(text, 4000);
+    
+    // Use OpenAI to extract topics
+    const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a document analysis assistant. Extract the main topics or themes from the following text. 
+                    For each topic, provide a confidence score between 0 and 1 indicating how central this topic is to the document.
+                    Return the result as a JSON array of objects with "name" and "confidence" properties, with no explanation.
+                    Example: [{"name": "Artificial Intelligence", "confidence": 0.95}, {"name": "Machine Learning", "confidence": 0.8}]`
+        },
+        {
+          role: 'user',
+          content: truncatedText
+        }
+      ],
+      response_format: { type: 'json_object' }
+    });
+    
+    // Parse the response
+    const content = response.choices[0].message.content;
+    const topics = JSON.parse(content).topics || [];
+    
+    return topics;
+  } catch (error) {
+    console.error('Error extracting topics with OpenAI:', error);
+    return [];
+  }
+}
+
+/**
+ * Extract named entities from document content using OpenAI
+ * @param {string} text - The document text content
+ * @returns {Promise<Array<{text: string, type: string, relevance: number}>>} Array of entities
+ */
+export async function extractEntities(text) {
+  if (!text || typeof text !== 'string') return [];
+  
+  try {
+    // Truncate text if it's too long
+    const truncatedText = truncateText(text, 4000);
+    
+    // Use OpenAI to extract entities
+    const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a document analysis assistant. Extract named entities from the following text.
+                    Identify people, organizations, locations, dates, and other important entities.
+                    For each entity, provide its type and a relevance score between 0 and 1.
+                    Return the result as a JSON array of objects with "text", "type", and "relevance" properties, with no explanation.
+                    Example: [{"text": "John Smith", "type": "PERSON", "relevance": 0.8}, {"text": "Microsoft", "type": "ORGANIZATION", "relevance": 0.9}]`
+        },
+        {
+          role: 'user',
+          content: truncatedText
+        }
+      ],
+      response_format: { type: 'json_object' }
+    });
+    
+    // Parse the response
+    const content = response.choices[0].message.content;
+    const entities = JSON.parse(content).entities || [];
+    
+    return entities;
+  } catch (error) {
+    console.error('Error extracting entities with OpenAI:', error);
+    return [];
+  }
+}
+
+/**
+ * Analyze sentiment of document content using OpenAI
+ * @param {string} text - The document text content
+ * @returns {Promise<{score: number, label: string}>} Sentiment analysis result
+ */
+export async function analyzeSentiment(text) {
+  if (!text || typeof text !== 'string') return null;
+  
+  try {
+    // Truncate text if it's too long
+    const truncatedText = truncateText(text, 4000);
+    
+    // Use OpenAI to analyze sentiment
+    const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a document analysis assistant. Analyze the sentiment of the following text.
+                    Provide a sentiment score between -1 (very negative) and 1 (very positive), and a label (negative, neutral, or positive).
+                    Return the result as a JSON object with "score" and "label" properties, with no explanation.
+                    Example: {"score": 0.75, "label": "positive"}`
+        },
+        {
+          role: 'user',
+          content: truncatedText
+        }
+      ],
+      response_format: { type: 'json_object' }
+    });
+    
+    // Parse the response
+    const content = response.choices[0].message.content;
+    const sentiment = JSON.parse(content);
+    
+    return sentiment;
+  } catch (error) {
+    console.error('Error analyzing sentiment with OpenAI:', error);
+    return null;
+  }
 }
 
 /**
