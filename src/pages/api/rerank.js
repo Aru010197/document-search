@@ -1,5 +1,4 @@
 import { getServerSupabase } from '../../lib/supabase';
-import { rerankResults, findParaphrases } from '../../lib/embeddings/cross-encoder';
 
 /**
  * API endpoint for reranking search results using Cross-Encoder models
@@ -10,6 +9,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Temporarily disable functionality to test bundle size
+  return res.status(200).json({ message: "Rerank API temporarily disabled for testing bundle size." });
+
+/* // Original code temporarily disabled
   try {
     console.log('Rerank API called with body:', req.body);
     
@@ -48,12 +51,14 @@ export default async function handler(req, res) {
         
         // Rerank the results with enhanced relevance scoring
         console.log(`Reranking ${results.length} results for query: "${query}"`);
-        const rerankedResults = await rerankResults(query, results, defaultOptions);
+        // const rerankedResults = await rerankResults(query, results, defaultOptions); // Temporarily disabled
+        const rerankedResults = results; // Temporarily return original results
         
         return res.status(200).json({
           rerankedResults,
           originalCount: results.length,
-          rerankedCount: rerankedResults.length
+          rerankedCount: rerankedResults.length,
+          message: "Reranking temporarily using original results for testing."
         });
         
       case 'paraphrase':
@@ -66,12 +71,14 @@ export default async function handler(req, res) {
         
         // Find paraphrases
         console.log(`Finding paraphrases among ${texts.length} texts`);
-        const paraphrases = await findParaphrases(texts, options || {});
+        // const paraphrases = await findParaphrases(texts, options || {}); // Temporarily disabled
+        const paraphrases = []; // Temporarily return empty array
         
         return res.status(200).json({
           paraphrases,
           totalTexts: texts.length,
-          paraphraseCount: paraphrases.length
+          paraphraseCount: paraphrases.length,
+          message: "Paraphrase mining temporarily disabled for testing."
         });
         
       default:
@@ -85,4 +92,5 @@ export default async function handler(req, res) {
       error: `Failed to perform operation: ${error.message}` 
     });
   }
+*/ // End of original code temporarily disabled
 }
