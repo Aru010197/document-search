@@ -54,10 +54,10 @@ export async function generateEmbeddingsBatch(texts, provider = DEFAULT_EMBEDDIN
  */
 export async function generateChunkEmbeddings(chunks, options = {}) {
   // Determine provider - if useOpenAI is true, force OpenAI provider
-  const provider = options.useOpenAI ? EMBEDDING_PROVIDERS.OPENAI : (options.provider || DEFAULT_EMBEDDING_PROVIDER);
+  const providerToUse = options.useOpenAI ? EMBEDDING_PROVIDERS.OPENAI : (options.provider || DEFAULT_EMBEDDING_PROVIDER);
   
   // Use the appropriate provider
-  if (provider === EMBEDDING_PROVIDERS.SBERT) {
+  if (providerToUse === EMBEDDING_PROVIDERS.SBERT) {
     const sbert = await import('./sbert');
     return sbert.generateChunkEmbeddings(chunks);
   } else {
