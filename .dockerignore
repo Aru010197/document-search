@@ -1,0 +1,48 @@
+# .dockerignore
+
+# Git files
+.git
+.gitignore
+
+# Node modules (we install them in the Dockerfile)
+node_modules
+
+# Next.js build output (we build it in the Dockerfile)
+.next
+
+# Local environment variables
+.env
+.env*.local
+
+# macOS specific files
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test files (if not needed in production image)
+# __tests__
+# *.test.js
+# *.spec.js
+
+# Any other files or directories not needed in the production image
+README.md
+AI_SEARCH_FEATURES.md
+DOCUMENT_PROCESSING.md
+excel_uploader_README.md
+OPENAI_INTEGRATION.md
+TECHNICAL_IMPLEMENTATION.md
+# The following line was too broad and excluded necessary src files.
+# *.js
+# If you need to exclude specific JS files from the root, list them individually:
+# e.g., add-sample-chunks.js
+# e.g., alternative_process_documents.js
+netlify.toml
+postcss.config.js
+tailwind.config.js
+excel.py
+run.sh
+supabase/

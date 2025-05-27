@@ -8,6 +8,7 @@
 import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
 import ExcelJS from 'exceljs';
+import officeParser from 'officeparser';
 
 /**
  * Extract content from a PDF file
@@ -54,13 +55,19 @@ export async function extractDocxContent(fileBuffer) {
   try {
     const result = await mammoth.extractRawText({ buffer: fileBuffer });
     const text = result.value;
-    
-    // Basic metadata (in a real app, we would use docx-metadata or similar)
+
+    // Attempt to get metadata using mammoth (limited) or a dedicated docx metadata library
+    let title = null;
+    let author = null;
+    // mammoth.properties doesn't exist; metadata extraction for docx is more complex.
+    // You might need a library like 'docxmeta' or parse the XML directly for properties.
+    // For now, keeping it simple.
+
     const metadata = {
-      title: null, // Would be extracted from document properties
-      author: null,
-      created_date: null,
-      modified_date: null,
+      title: title,
+      author: author,
+      created_date: null, // Placeholder
+      modified_date: null, // Placeholder
       content_type: 'docx'
     };
     
@@ -85,47 +92,30 @@ export async function extractDocxContent(fileBuffer) {
  */
 export async function extractPptContent(fileBuffer) {
   try {
-    // In a real implementation, we would use a proper PPTX parsing library
-    // For this demo, we'll return mock data that simulates the structure
-    
-    const mockText = 'This is sample text extracted from a PowerPoint presentation. ' +
-      'Each slide would be processed individually. ' +
-      'Slide 1: Introduction to Document Search. ' +
-      'Slide 2: Key Features and Benefits. ' +
-      'Slide 3: Technical Implementation Details. ' +
-      'Slide 4: Demo and Examples. ' +
-      'Slide 5: Questions and Next Steps.';
-    
+    // Use officeparser to extract text from PPTX
+    const text = await officeParser.parse(fileBuffer);
+
+    // Basic metadata (officeparser might provide more, needs investigation)
     const metadata = {
-      title: 'Sample Presentation',
-      author: 'Presentation Creator',
-      created_date: new Date().toISOString(),
-      modified_date: new Date().toISOString(),
-      slide_count: 5,
+      title: null, // Placeholder - Investigate if officeparser provides title
+      author: null, // Placeholder - Investigate if officeparser provides author
+      created_date: null, // Placeholder
+      modified_date: null, // Placeholder
+      slide_count: null, // Placeholder - Investigate if officeparser provides slide count
       content_type: 'pptx'
     };
-    
-    // Create content chunks (by slides in this case)
-    const slideTexts = mockText.split('Slide');
-    const chunks = slideTexts
-      .filter(text => text.trim().length > 0)
-      .map((text, index) => ({
-        content: text.trim(),
-        metadata: { 
-          type: 'slide',
-          index: index,
-          title: `Slide ${index}`
-        }
-      }));
-    
+
+    // Create content chunks from the extracted text
+    const chunks = createContentChunks(text);
+
     return {
-      text: mockText,
+      text,
       metadata,
       chunks
     };
   } catch (error) {
-    console.error('PPTX extraction error:', error);
-    throw new Error('Failed to extract content from PPTX');
+    console.error('PPTX extraction error using officeparser:', error);
+    throw new Error('Failed to extract content from PPTX using officeparser');
   }
 }
 

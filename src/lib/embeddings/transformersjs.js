@@ -1,4 +1,3 @@
-\
 import { pipeline, env } from '@xenova/transformers';
 
 // Configure transformers.js
