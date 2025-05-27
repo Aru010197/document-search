@@ -41,8 +41,8 @@ TECHNICAL_IMPLEMENTATION.md
 # e.g., add-sample-chunks.js
 # e.g., alternative_process_documents.js
 netlify.toml
-postcss.config.js
-tailwind.config.js
+# postcss.config.js # This was an error, postcss.config.js IS needed for the build.
+# tailwind.config.js # This is also needed for the build.
 excel.py
 run.sh
 supabase/
