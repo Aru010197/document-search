@@ -4,7 +4,6 @@ const nextConfig = {
   images: {
     domains: ['localhost'],
   },
-  output: 'standalone',
   async headers() {
     return [
       {

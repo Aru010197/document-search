@@ -193,71 +193,39 @@ function checkPhraseMatches(query, docText, phraseBoost = 1.5) {
  * @returns {Object} - Object with keyTerms and stopwords arrays
  */
 function processQueryTerms(query) {
-// Common stopwords that have low semantic value
-const STOPWORDS = new Set([
-  'a', 'equipped', 'an','','collate', 'decks', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'and', 'for', 'with',
-  'by', 'about', 'as', 'into', 'like', 'through', 'after', 'over', 'between','use case','use cases','usecases','usecase',
-  'out', 'of', 'from', 'up', 'down', 'is', 'are', 'was', 'were', 'be', 'been',
-  'being', 'have', 'has', 'had', 'do', 'does', 'did', 'can', 'could', 'will', 'find',
-  'would', 'should', 'shall', 'may', 'might', 'must', 'that', 'which', 'who',
-  'whom', 'whose', 'this', 'these', 'those', 'am', 'i', 'we', 'you', 'he', 'she',
-  'they', 'it', 'me', 'us', 'him', 'her', 'them', 'my', 'our', 'your', 'his', 'files', 'file',
-  'use', 'driven', 'all', 'extract','its', , 'related', 'their', 'mine', 'ours', 'yours', 'hers', 'theirs', 'give', 'get', 'show', 'me', 'ppt', 'doc', 'documment', 'documents'
-]);
+  // Common stopwords that have low semantic value
+  const STOPWORDS = new Set([
+    'a', 'equipped', 'an','','collate', 'decks', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'and', 'for', 'with',
+    'by', 'about', 'as', 'into', 'like', 'through', 'after', 'over', 'between','use case','use cases','usecases','usecase',
+    'out', 'of', 'from', 'up', 'down', 'is', 'are', 'was', 'were', 'be', 'been',
+    'being', 'have', 'has', 'had', 'do', 'does', 'did', 'can', 'could', 'will', 'find',
+    'would', 'should', 'shall', 'may', 'might', 'must', 'that', 'which', 'who',
+    'whom', 'whose', 'this', 'these', 'those', 'am', 'i', 'we', 'you', 'he', 'she',
+    'they', 'it', 'me', 'us', 'him', 'her', 'them', 'my', 'our', 'your', 'his', 'files', 'file',
+    'use', 'driven', 'all', 'extract','its', , 'related', 'their', 'mine', 'ours', 'yours', 'hers', 'theirs', 'give', 'get', 'show', 'me', 'ppt', 'doc', 'documment', 'documents'
+  ]);
 
-// Domain-specific terms that should be kept together
-const DOMAIN_TERMS = [
-  'health care', 'voice ai', 'cloud', 'healthcare', 'case study', 'case studies', 'machine learning',
-  'artificial intelligence', 'data science', 'natural language processing',
-  'computer vision', 'deep learning', 'neural network', 'big data',
-  'data analytics', 'business intelligence', 'cloud computing', 'internet of things',
-  'blockchain', 'virtual reality', 'augmented reality', 'mixed reality',
-  'quantum computing', 'edge computing', 'cyber security', 'information security',
-  'data privacy', 'digital transformation', 'user experience', 'user interface',
-  'mobile app', 'web application', 'software development', 'agile methodology',
-  'devops', 'continuous integration', 'continuous deployment', 'microservices',
-  'serverless architecture', 'container orchestration', 'docker', 'kubernetes',
-  'public health', 'mental health', 'primary care', 'secondary care', 'tertiary care',
-  'preventive care', 'palliative care', 'emergency care', 'intensive care',
-  'patient care', 'medical research', 'clinical trial', 'pharmaceutical',
-  'medical device', 'health insurance', 'electronic health record', 'telemedicine',
-  'remote patient monitoring', 'wearable technology', 'health informatics',
-  'population health', 'precision medicine', 'personalized medicine',
-  'genomic medicine', 'regenerative medicine', 'stem cell therapy', 'gene therapy',
-  'immunotherapy', 'radiation therapy', 'chemotherapy', 'surgical procedure',
-  'minimally invasive surgery', 'robotic surgery', 'diagnostic imaging',
-  'medical imaging', 'laboratory testing', 'pathology', 'radiology', 'cardiology',
-  'neurology', 'oncology', 'pediatrics', 'geriatrics', 'obstetrics', 'gynecology',
-  'orthopedics', 'dermatology', 'ophthalmology', 'psychiatry', 'psychology',
-  'physical therapy', 'occupational therapy', 'speech therapy', 'respiratory therapy',
-  'nutrition', 'dietetics', 'pharmacy', 'nursing', 'midwifery', 'dentistry',
-  'optometry', 'audiology', 'social work', 'health administration', 'public health',
-  'epidemiology', 'biostatistics', 'health policy', 'health economics',
-  'health disparities', 'health equity', 'social determinants of health',
-  'environmental health', 'occupational health', 'global health', 'one health',
-  'zoonotic disease', 'infectious disease', 'chronic disease', 'non-communicable disease',
-  'mental illness', 'substance abuse', 'addiction', 'rehabilitation', 'recovery',
-  'wellness', 'prevention', 'screening', 'diagnosis', 'treatment', 'management',
-  'palliative care', 'end of life care', 'hospice', 'long term care', 'home health',
-  'assisted living', 'skilled nursing', 'inpatient', 'outpatient', 'ambulatory care',
-  'emergency department', 'urgent care', 'primary care physician', 'specialist',
-  'consultant', 'attending physician', 'resident physician', 'medical student',
-  'nurse practitioner', 'physician assistant', 'registered nurse', 'licensed practical nurse',
-  'certified nursing assistant', 'medical assistant', 'paramedic', 'emergency medical technician',
-  'community health worker', 'patient navigator', 'care coordinator', 'case manager',
-  'social worker', 'therapist', 'counselor', 'psychologist', 'psychiatrist',
-  'pharmacist', 'pharmacy technician', 'dietitian', 'nutritionist', 'physical therapist',
-  'occupational therapist', 'speech language pathologist', 'respiratory therapist',
-  'radiologic technologist', 'laboratory technician', 'phlebotomist', 'medical coder',
-  'medical biller', 'health information technician', 'health educator', 'public health worker',
-  'epidemiologist', 'biostatistician', 'health policy analyst', 'health economist',
-  'healthcare administrator', 'healthcare executive', 'hospital administrator',
-  'practice manager', 'clinic manager', 'department chair', 'chief medical officer',
-  'chief nursing officer', 'chief executive officer', 'chief financial officer',
-  'chief information officer', 'chief technology officer', 'chief operating officer',
-  'board of directors', 'governing board', 'stakeholder', 'shareholder', 'investor',
-  'payer', 'provider', 'supplier', 'vendor', 'contractor', 'consultant', 'advisor', 'pharma'
-];
+  // Load domain-specific terms from JSON file
+  // Note: In a Node.js environment, you would use fs.readFileSync.
+  // For browser/Next.js, this approach assumes the JSON is bundled or fetched.
+  // If this code runs server-side during build or in a Node.js environment (e.g. Netlify functions),
+  // direct file system access is possible.
+  let DOMAIN_TERMS = [];
+  try {
+    // This path needs to be resolvable from where this script is executed.
+    // For Netlify functions, files included in the function bundle can be accessed.
+    // If domain-terms.json is in the same directory or a known relative path:
+    const fs = require('fs');
+    const path = require('path');
+    const domainTermsPath = path.resolve(__dirname, 'domain-terms.json');
+    if (fs.existsSync(domainTermsPath)) {
+      DOMAIN_TERMS = JSON.parse(fs.readFileSync(domainTermsPath, 'utf-8'));
+    } else {
+      console.warn('domain-terms.json not found at expected path:', domainTermsPath, '. Proceeding without domain terms.');
+    }
+  } catch (error) {
+    console.error('Error loading domain-terms.json:', error, '. Proceeding without domain terms.');
+  }
   
   // Split query into words
   const words = query.split(/\\s+/);
