@@ -1,161 +1,14 @@
 /**
  * Cross-Encoder (Reranker) Implementation
  * 
- * This module provides functionality for reranking search results using the Universal Sentence Encoder model,
- * which computes similarity scores between text pairs.
+ * This module provides functionality for reranking search results.
+ * The original TensorFlow.js-based model loading and embedding generation have been removed
+ * to ensure compatibility with environments like Vercel.
+ * Reranking now relies on text-based similarity metrics.
  */
 
-const tf = require('@tensorflow/tfjs-node');
-const { loadGraphModel } = require('@tensorflow/tfjs-node');
-
-// Default model URL - using a TensorFlow.js compatible model
-const DEFAULT_MODEL_URL = 'https://storage.googleapis.com/tfjs-models/savedmodel/universal_sentence_encoder/model.json';
-
-// Cache for loaded models
-const modelCache = {};
-
 /**
- * Load the Universal Sentence Encoder model
- * 
- * @param {string} modelUrl - URL to the TensorFlow.js model
- * @returns {Promise<Object>} - The loaded model
- */
-async function loadModel(modelUrl = DEFAULT_MODEL_URL) {
-  if (modelCache[modelUrl]) {
-    return modelCache[modelUrl];
-  }
-  
-  try {
-    console.log(`Loading Universal Sentence Encoder model from ${modelUrl}...`);
-    const model = await loadGraphModel(modelUrl);
-    modelCache[modelUrl] = model;
-    console.log('Model loaded successfully');
-    return model;
-  } catch (error) {
-    console.error('Error loading model:', error);
-    throw error;
-  }
-}
-
-/**
- * Generate embeddings for a batch of texts
- * 
- * @param {Array<string>} texts - Array of text strings
- * @param {Object} model - The loaded model
- * @returns {Promise<tf.Tensor>} - Tensor of embeddings
- */
-async function generateEmbeddings(texts, model) {
-  // Preprocess texts (trim, lowercase)
-  const preprocessedTexts = texts.map(text => 
-    text.trim().toLowerCase().substring(0, 1000) // Limit length to avoid issues
-  );
-
-  // The Universal Sentence Encoder model requires specific input format with 2 tensors
-  const validLength = preprocessedTexts.length > 0 ? preprocessedTexts.length : 1;
-  const dummySecondInput = tf.zeros([validLength], 'int32').reshape([-1]); // Explicitly use int32 data type
-  const indices = tf.tensor2d(
-    preprocessedTexts.map((_, i) => [i, 0]),
-    [validLength, 2],
-    'int32' // Explicitly set dtype to int32
-  );
-
-  try {
-    // Generate embeddings using executeAsync for dynamic operations
-    const embeddings = await model.executeAsync({
-      indices,
-      values: dummySecondInput
-    });
-
-    // Clean up tensors
-    dummySecondInput.dispose();
-    indices.dispose();
-
-    return embeddings;
-  } catch (error) {
-    console.error('Error in model prediction:', error);
-    
-    // Clean up tensors
-    dummySecondInput.dispose();
-    indices.dispose();
-
-    // Try alternative approaches if the first method fails
-    try {
-      console.log('Trying alternative input format...');
-      
-      // Create new tensors for the alternative approach
-      const altDummyInput = tf.zeros([validLength], 'int32').reshape([-1]);
-      const altIndices = tf.tensor2d(
-        preprocessedTexts.map((_, i) => [i, 0]),
-        [validLength, 2],
-        'int32'
-      );
-      
-      // Try with executeAsync again
-      const result = await model.executeAsync({
-        indices: altIndices,
-        values: altDummyInput
-      });
-      
-      // Clean up tensors
-      altDummyInput.dispose();
-      altIndices.dispose();
-      
-      return result;
-    } catch (innerError) {
-      console.error('Alternative input format failed:', innerError);
-      
-      // Try one more approach with tensor2d
-      try {
-        console.log('Trying tensor2d approach...');
-        
-        // Reshape input to match expected dimensions
-        const reshapedInput = tf.tensor2d(preprocessedTexts, [preprocessedTexts.length, 1]);
-        const embeddings = await model.predict(reshapedInput);
-        
-        // Clean up tensor
-        reshapedInput.dispose();
-        
-        return embeddings;
-      } catch (finalError) {
-        console.error('All embedding approaches failed:', finalError);
-        
-        // Return a fallback embedding (zeros)
-        console.log('Using fallback zero embeddings');
-        return tf.zeros([preprocessedTexts.length, 512]);
-      }
-    }
-  }
-}
-
-/**
- * Calculate cosine similarity between two tensors
- * 
- * @param {tf.Tensor} a - First tensor
- * @param {tf.Tensor} b - Second tensor
- * @returns {tf.Tensor} - Tensor of similarity scores
- */
-function cosineSimilarity(a, b) {
-  // Normalize the vectors
-  const normA = tf.norm(a, 2, 1, true);
-  const normB = tf.norm(b, 2, 1, true);
-  
-  const normalizedA = tf.div(a, normA);
-  const normalizedB = tf.div(b, normB);
-  
-  // Calculate dot product
-  const similarity = tf.matMul(normalizedA, normalizedB, false, true);
-  
-  // Clean up intermediate tensors
-  normA.dispose();
-  normB.dispose();
-  normalizedA.dispose();
-  normalizedB.dispose();
-  
-  return similarity;
-}
-
-/**
- * Calculate similarity scores between query and documents
+ * Calculate similarity scores between query and documents using text-based methods.
  * 
  * @param {string} query - The search query
  * @param {Array<Object>} documents - Array of document objects with text content
@@ -164,101 +17,49 @@ function cosineSimilarity(a, b) {
  */
 async function calculateSimilarityScores(query, documents, options = {}) {
   const { 
-    modelUrl = DEFAULT_MODEL_URL, 
     textField = 'content', 
     scoreField = 'score',
     semanticWeight = 0.8,  // Weight for semantic matching (0.8 = 80% semantic, 20% lexical)
     phraseBoost = 1.5      // Boost factor for phrase matches
   } = options;
   
+  // Directly use the text-based similarity approach
+  console.log('Using text-based similarity for scoring...');
+  
   try {
-    // Load model
-    const model = await loadModel(modelUrl);
-    
-    // Extract text content from documents
-    const texts = documents.map(doc => doc[textField] || '');
-    
-    // Add query to the beginning
-    const allTexts = [query, ...texts];
-    
-    try {
-      // Generate embeddings for all texts
-      const embeddings = await generateEmbeddings(allTexts, model);
+    const scoredDocuments = documents.map(doc => {
+      const docText = doc[textField] || '';
       
-      // Extract query embedding and document embeddings
-      const queryEmbedding = tf.slice(embeddings, [0, 0], [1, embeddings.shape[1]]);
-      const docEmbeddings = tf.slice(embeddings, [1, 0], [texts.length, embeddings.shape[1]]);
+      // Normalize texts
+      const normalizedQuery = query.toLowerCase();
+      const normalizedDocText = docText.toLowerCase();
       
-      // Calculate similarity scores
-      const similarities = cosineSimilarity(queryEmbedding, docEmbeddings);
+      // Check for exact phrase matches (highest priority)
+      const phraseMatchScore = checkPhraseMatches(normalizedQuery, normalizedDocText, phraseBoost);
       
-      // Convert to array
-      const scores = Array.from(await similarities.array())[0];
+      // Process query to extract key terms and remove stopwords
+      const { keyTerms } = processQueryTerms(normalizedQuery); // stopwords not directly used here but processed
       
-      // Clean up tensors
-      embeddings.dispose();
-      queryEmbedding.dispose();
-      docEmbeddings.dispose();
-      similarities.dispose();
+      // Calculate semantic match score based on key terms
+      const keyTermMatchScore = calculateKeyTermMatchScore(keyTerms, normalizedDocText);
       
-      // Add scores to documents
-      const scoredDocuments = documents.map((doc, i) => ({
+      // Calculate a weighted combined score
+      // Semantic matching gets higher weight, phrase matches are boosted
+      const combinedScore = (semanticWeight * phraseMatchScore) + 
+                           ((1 - semanticWeight) * keyTermMatchScore);
+      
+      return {
         ...doc,
-        [scoreField]: scores[i]
-      }));
-      
-      // Sort by score (descending)
-      scoredDocuments.sort((a, b) => b[scoreField] - a[scoreField]);
-      
-      return scoredDocuments;
-    } catch (embeddingError) {
-      console.error('Error during embedding or similarity calculation:', embeddingError);
-      
-      // If we have a vector dimension mismatch, use a simpler approach
-      if (embeddingError.message && (
-          embeddingError.message.includes('different vector dimensions') ||
-          embeddingError.message.includes('Input tensor count mismatch') ||
-          embeddingError.message.includes('The shape of dict')
-      )) {
-        console.log('Vector dimension mismatch detected. Using simple text similarity...');
-        
-        // Use an enhanced text similarity approach as fallback
-        return documents.map(doc => {
-          const docText = doc[textField] || '';
-          
-          // Normalize texts
-          const normalizedQuery = query.toLowerCase();
-          const normalizedDocText = docText.toLowerCase();
-          
-          // Check for exact phrase matches (highest priority)
-          const phraseMatchScore = checkPhraseMatches(normalizedQuery, normalizedDocText, phraseBoost);
-          
-          // Process query to extract key terms and remove stopwords
-          const { keyTerms, stopwords } = processQueryTerms(normalizedQuery);
-          
-          // Calculate semantic match score based on key terms
-          const keyTermMatchScore = calculateKeyTermMatchScore(keyTerms, normalizedDocText);
-          
-          // Calculate a weighted combined score
-          // Semantic matching gets higher weight, phrase matches are boosted
-          const combinedScore = (semanticWeight * phraseMatchScore) + 
-                               ((1 - semanticWeight) * keyTermMatchScore);
-          
-          return {
-            ...doc,
-            [scoreField]: combinedScore,
-            phraseMatchScore,  // Include component scores for debugging
-            keyTermMatchScore
-          };
-        }).sort((a, b) => b[scoreField] - a[scoreField]);
-      }
-      
-      // Re-throw other errors
-      throw embeddingError;
-    }
+        [scoreField]: combinedScore,
+        phraseMatchScore,  // Include component scores for debugging
+        keyTermMatchScore
+      };
+    }).sort((a, b) => b[scoreField] - a[scoreField]);
+
+    return scoredDocuments;
+
   } catch (error) {
-    console.error('Error calculating similarity scores:', error);
-    
+    console.error('Error calculating text-based similarity scores:', error);
     // Fallback: return original documents with default scores
     return documents.map(doc => ({
       ...doc,
@@ -280,190 +81,66 @@ async function rerankResults(query, results, options = {}) {
     return [];
   }
   
-  console.log(`Reranking ${results.length} results...`);
+  console.log(`Reranking ${results.length} results using text-based similarity...`);
   
   try {
-    // Determine the field where the cross-encoder model's raw score will be stored.
+    // Determine the field where the model's raw score will be stored.
     const modelScoreField = options.scoreField || 'rerankerScore';
 
-    // The 'results' parameter contains items, each expected to have an existing 'score' 
-    // (this is the original semantic or keyword score passed from search.js).
-    // calculateSimilarityScores will compute the cross-encoder model's score and store it 
-    // in the field specified by 'modelScoreField' (e.g., 'rerankerScore').
     const itemsWithModelScore = await calculateSimilarityScores(query, results, {
-      ...options, // Pass through other options like textField
+      ...options, 
       scoreField: modelScoreField 
     });
 
-    // itemsWithModelScore is an array of documents, each now having:
-    // - doc.score: The original score (e.g., semantic similarity from Supabase).
-    // - doc[modelScoreField]: The raw score from the cross-encoder model (e.g., doc.rerankerScore).
-
     let finalResults;
 
-    // Check if scores should be combined.
-    // This relies on 'combineScores' being true in options and the first result having an original 'score'.
     if (options.combineScores && results.length > 0 && typeof results[0].score === 'number') {
-      const alpha = options.alpha || 0.7; // Weight for the reranker model's score.
+      const alpha = options.alpha || 0.7; 
       
       finalResults = itemsWithModelScore.map(doc => {
-        const originalScore = doc.score; // The score before reranking (e.g., from semantic search).
-        const modelScoreValue = doc[modelScoreField]; // The score from the reranker model.
+        const originalScore = doc.score; 
+        const modelScoreValue = doc[modelScoreField]; 
         
-        // Ensure scores are numeric, defaulting to 0 if not.
         const validOriginalScore = (typeof originalScore === 'number' && !isNaN(originalScore)) ? originalScore : 0;
         const validModelScore = (typeof modelScoreValue === 'number' && !isNaN(modelScoreValue)) ? modelScoreValue : 0;
 
-        // Calculate the combined score.
         const combinedScoreValue = (alpha * validModelScore) + ((1 - alpha) * validOriginalScore);
         
         return {
           ...doc,
-          score: combinedScoreValue, // The main 'score' field is updated to the combined score.
-          // The raw model score remains in doc[modelScoreField] (e.g., doc.rerankerScore) for logging/debugging.
+          score: combinedScoreValue, 
         };
       });
     } else {
-      // If not combining scores (or if original scores were not present),
-      // use the reranker model's score as the primary score.
       finalResults = itemsWithModelScore.map(doc => {
         const modelScoreValue = doc[modelScoreField];
         const validModelScore = (typeof modelScoreValue === 'number' && !isNaN(modelScoreValue)) ? modelScoreValue : 0;
         return {
           ...doc,
-          score: validModelScore, // The main 'score' field becomes the reranker model's score.
+          score: validModelScore, 
         };
       });
     }
     
-    // Sort the final results by the (now primary) 'score' field in descending order.
     return finalResults.sort((a, b) => (b.score || 0) - (a.score || 0));
 
   } catch (error) {
     console.error('Error reranking results:', error);
-    // Fallback: Return original results, ensuring 'score' is numeric and sorting them.
     return results.map(r => ({...r, score: (typeof r.score === 'number' && !isNaN(r.score) ? r.score : 0) }))
                   .sort((a,b) => (b.score || 0) - (a.score || 0)); 
   }
 }
 
 /**
- * Find paraphrases in a corpus of texts
+ * Find paraphrases in a corpus of texts - Functionality removed due to TF.js dependency removal.
  * 
  * @param {Array<string>} texts - Array of text strings to compare
  * @param {Object} options - Additional options
- * @returns {Promise<Array<Object>>} - Array of paraphrase pairs with similarity scores
+ * @returns {Promise<Array<Object>>} - Empty array
  */
 async function findParaphrases(texts, options = {}) {
-  const { threshold = 0.85, maxPairs = 1000, modelUrl = DEFAULT_MODEL_URL } = options;
-  
-  if (!texts || texts.length < 2) {
-    return [];
-  }
-  
-  console.log(`Finding paraphrases among ${texts.length} texts...`);
-  
-  try {
-    // Load model
-    const model = await loadModel(modelUrl);
-    
-    try {
-      // Generate embeddings for all texts
-      const embeddings = await generateEmbeddings(texts, model);
-      
-      // Calculate pairwise similarities
-      const similarities = cosineSimilarity(embeddings, embeddings);
-      
-      // Convert to array
-      const similarityMatrix = await similarities.array();
-      
-      // Generate all possible pairs (avoiding duplicates and self-comparisons)
-      const pairs = [];
-      for (let i = 0; i < texts.length; i++) {
-        for (let j = i + 1; j < texts.length; j++) {
-          const similarity = similarityMatrix[i][j];
-          
-          // Only keep pairs above threshold
-          if (similarity >= threshold) {
-            pairs.push({
-              text1: texts[i],
-              text2: texts[j],
-              index1: i,
-              index2: j,
-              score: similarity
-            });
-          }
-        }
-      }
-      
-      // Clean up tensors
-      embeddings.dispose();
-      similarities.dispose();
-      
-      // Sort by score (descending) and limit
-      pairs.sort((a, b) => b.score - a.score);
-      return pairs.slice(0, maxPairs);
-    } catch (embeddingError) {
-      console.error('Error during embedding or similarity calculation:', embeddingError);
-      
-      // If we have a vector dimension mismatch, use a simpler approach
-      if (embeddingError.message && (
-          embeddingError.message.includes('different vector dimensions') ||
-          embeddingError.message.includes('Input tensor count mismatch') ||
-          embeddingError.message.includes('The shape of dict')
-      )) {
-        console.log('Vector dimension mismatch detected. Using simple text similarity for paraphrases...');
-        
-        // Use a simple text similarity approach as fallback
-        const pairs = [];
-        
-        // Compare all pairs of texts
-        for (let i = 0; i < texts.length; i++) {
-          for (let j = i + 1; j < texts.length; j++) {
-            const text1 = texts[i].toLowerCase();
-            const text2 = texts[j].toLowerCase();
-            
-            // Calculate word overlap
-            const words1 = text1.split(/\s+/).filter(w => w.length > 2);
-            const words2 = text2.split(/\s+/).filter(w => w.length > 2);
-            
-            // Count matching words
-            let matchCount = 0;
-            for (const word of words1) {
-              if (words2.includes(word)) {
-                matchCount++;
-              }
-            }
-            
-            // Calculate a simple similarity score
-            const totalWords = Math.max(words1.length, words2.length);
-            const simScore = totalWords > 0 ? matchCount / totalWords : 0;
-            
-            // Only keep pairs above threshold
-            if (simScore >= threshold) {
-              pairs.push({
-                text1: texts[i],
-                text2: texts[j],
-                index1: i,
-                index2: j,
-                score: simScore
-              });
-            }
-          }
-        }
-        
-        // Sort by score (descending) and limit
-        pairs.sort((a, b) => b.score - a.score);
-        return pairs.slice(0, maxPairs);
-      }
-      
-      // Re-throw other errors
-      throw embeddingError;
-    }
-  } catch (error) {
-    console.error('Error finding paraphrases:', error);
-    return [];
-  }
+  console.log('findParaphrases functionality has been removed as it depended on TensorFlow.js.');
+  return []; // Return empty array as model-based paraphrase detection is removed
 }
 
 /**
@@ -583,7 +260,7 @@ const DOMAIN_TERMS = [
 ];
   
   // Split query into words
-  const words = query.split(/\s+/);
+  const words = query.split(/\\s+/);
   
   // Separate key terms and stopwords
   const keyTerms = [];
@@ -659,9 +336,9 @@ function calculateKeyTermMatchScore(keyTerms, docText) {
 module.exports = {
   calculateSimilarityScores,
   rerankResults,
-  findParaphrases,
-  loadModel,
-  // Export helper functions for testing
+  findParaphrases, // Will now return [], was dependent on TF model
+  // loadModel, // Removed
+  // Export helper functions for testing or if used elsewhere
   checkPhraseMatches,
   processQueryTerms,
   calculateKeyTermMatchScore
