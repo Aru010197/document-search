@@ -5,7 +5,11 @@
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
-  included_files = ["src/lib/embeddings/domain-terms.json"]
+  included_files = [
+    "src/lib/embeddings/domain-terms.json",
+    # Add model files for transformers.js if you choose to bundle them
+    # e.g., "node_modules/@xenova/transformers/models/Xenova/all-MiniLM-L6-v2/**"
+  ]
 
 [[redirects]]
   from = "/_next/image*"
@@ -19,3 +23,14 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+  [plugins.inputs]
+    # externalNodeModules = [] # Clear this if SBERT/TF.js is fully removed
+    # Ensure domain-terms.json is available to Next.js functions
+    includedFiles = [
+      "src/lib/embeddings/domain-terms.json"
+      # Add model files for transformers.js if you choose to bundle them for Next.js functions
+      # e.g., "node_modules/@xenova/transformers/models/Xenova/all-MiniLM-L6-v2/**"
+    ]
+    # You might need to mark onnxruntime-node as external if it causes issues,
+    # or ensure it's correctly bundled.
+    # externalNodeModules = ["onnxruntime-node"]
